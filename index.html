@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кредит: журнал платежей и расчёты</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --ink:#0F1D1B;
+  --panel:#172B28;
+  --panel-2:#1E3733;
+  --rule:#2B4A45;
+  --rule-soft:rgba(43,74,69,.55);
+  --text:#E8EFEC;
+  --muted:#8FA9A3;
+  --gold:#F2C14E;
+  --teal:#5F9E95;
+  --clay:#E0765C;
+  --ok:#7FCBA4;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:36px 20px 72px}
+
+h1{
+  font-family:Georgia,"Palatino Linotype","Book Antiqua",serif;font-weight:400;
+  font-size:clamp(26px,4.4vw,38px);line-height:1.15;letter-spacing:-0.01em;margin:0 0 10px;
+}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 26px;font-size:15.5px}
+h2{font-family:Georgia,"Palatino Linotype","Book Antiqua",serif;font-weight:400;font-size:23px;margin:0 0 6px}
+h3{font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text)}
+.sub{color:var(--muted);font-size:14px;margin:0 0 18px;max-width:64ch}
+
+/* синхронизация */
+.syncbar{
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:9px;
+  padding:11px 15px;margin-bottom:12px;
+}
+.syncbar .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.syncbar.live .dot{background:var(--ok)}
+.syncbar.busy .dot{background:var(--gold)}
+.syncbar.bad .dot{background:var(--clay)}
+.syncbar .status{font-size:13.5px;color:var(--muted);flex:1 1 210px;min-width:0}
+.syncbar .acts{display:flex;gap:7px;flex-wrap:wrap}
+.btn.small{padding:6px 12px;font-size:13px;text-decoration:none;display:inline-block}
+
+.setup{font-size:14px;color:var(--muted);line-height:1.65;border-left:2px solid var(--rule);padding-left:16px}
+.setup p{margin:0 0 10px}
+.setup ol{margin:0 0 14px;padding-left:20px}
+.setup li{margin-bottom:6px}
+.setup b{color:var(--text)}
+.setup a{color:var(--gold)}
+.setup code{background:var(--ink);border-radius:4px;padding:1px 5px;font-size:12.5px;color:var(--text)}
+.setup input[type=text]{
+  width:100%;max-width:520px;background:var(--ink);border:1px solid var(--rule);border-radius:6px;
+  color:var(--text);font:inherit;font-size:13.5px;padding:9px 11px;
+}
+
+/* вкладки */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:26px}
+.tabs button{
+  font:inherit;font-size:15px;cursor:pointer;background:transparent;color:var(--muted);
+  border:none;border-bottom:2px solid transparent;padding:11px 18px;margin-bottom:-1px;
+}
+.tabs button:hover{color:var(--text)}
+.tabs button.on{color:var(--gold);border-bottom-color:var(--gold)}
+.tabs button:focus-visible{outline:2px solid var(--gold);outline-offset:-3px;border-radius:4px}
+.page{display:none}
+.page.on{display:block}
+
+section{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:24px 22px;margin-bottom:20px}
+section.params{background:var(--panel-2)}
+
+.grid{display:grid;gap:14px}
+.grid.inputs{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.split{display:grid;gap:20px;grid-template-columns:minmax(0,1.55fr) minmax(250px,1fr)}
+.charts{display:grid;gap:20px;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)}
+@media (max-width:840px){.split,.charts{grid-template-columns:1fr}}
+
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+input[type=number],input[type=date]{
+  width:100%;background:var(--ink);border:1px solid var(--rule);border-radius:6px;
+  color:var(--text);font:inherit;font-variant-numeric:tabular-nums;padding:9px 11px;
+}
+input[type=date]{color-scheme:dark;min-height:41px}
+input:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.hint{font-size:12px;color:var(--muted);margin-top:5px;min-height:15px}
+
+.btn{
+  font:inherit;font-size:14px;cursor:pointer;background:transparent;color:var(--gold);
+  border:1px solid var(--rule);border-radius:7px;padding:8px 15px;
+}
+.btn:hover{border-color:var(--gold)}
+.btn.solid{background:var(--gold);color:#12201F;border-color:var(--gold);font-weight:600}
+.btn.quiet{color:var(--muted)}
+.btn.quiet:hover{color:var(--clay);border-color:var(--clay)}
+.btnrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+
+/* таблица платежей */
+.tbl-scroll{max-height:420px;overflow:auto;border:1px solid var(--rule);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+thead th{
+  position:sticky;top:0;z-index:1;background:var(--panel-2);color:var(--muted);
+  font-weight:500;text-align:right;padding:9px 10px;border-bottom:1px solid var(--rule);white-space:nowrap;
+}
+thead th:first-child,tbody td:first-child{text-align:left}
+tbody td{padding:5px 10px;text-align:right;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
+tbody tr:nth-child(even){background:rgba(30,55,51,.4)}
+tbody .yr{color:var(--muted)}
+td.pay{color:var(--gold)}
+td.int{color:var(--clay)}
+tfoot td{padding:9px 10px;text-align:right;font-weight:600;border-top:1px solid var(--rule);background:var(--panel-2);position:sticky;bottom:0}
+tfoot td:first-child{text-align:left;font-weight:400;color:var(--muted)}
+.empty{padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
+
+td input{padding:5px 7px;font-size:13.5px;text-align:right;border-color:transparent;background:transparent}
+td input:hover{border-color:var(--rule)}
+td input[type=date]{min-height:0;text-align:left}
+.del{
+  background:none;border:none;color:var(--muted);cursor:pointer;font-size:17px;
+  line-height:1;padding:3px 6px;border-radius:4px;
+}
+.del:hover{color:var(--clay);background:rgba(224,118,92,.12)}
+.addrow{display:grid;gap:8px;grid-template-columns:1.2fr 1fr 1fr auto;align-items:end;margin-bottom:14px}
+@media (max-width:640px){.addrow{grid-template-columns:1fr 1fr}}
+
+/* сводка */
+.summary{display:flex;flex-direction:column;gap:2px}
+.srow{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--rule-soft)}
+.srow:last-child{border-bottom:none}
+.srow .k{font-size:13px;color:var(--muted);flex:1 1 auto}
+.srow .v{font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.v.gold{color:var(--gold)}.v.clay{color:var(--clay)}.v.ok{color:var(--ok)}.v.teal{color:var(--teal)}
+
+/* ползунки */
+.slider-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.slider-row .name{font-size:14px;color:var(--muted);flex:0 0 auto}
+.slider-row input[type=range]{flex:1 1 180px;min-width:140px}
+.slider-row .val{font-variant-numeric:tabular-nums;font-weight:600;min-width:104px;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;height:22px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--rule);border-radius:2px}
+input[type=range]::-moz-range-track{height:3px;background:var(--rule);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:19px;height:19px;border-radius:50%;background:var(--gold);border:none;margin-top:-8px}
+input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;background:var(--gold);border:none}
+input.thumb-clay::-webkit-slider-thumb{background:var(--clay)}
+input.thumb-clay::-moz-range-thumb{background:var(--clay)}
+
+.metric{border-top:1px solid var(--rule);padding-top:11px}
+.metric .k{font-size:13px;color:var(--muted);margin-bottom:3px}
+.metric .v{font-size:24px;font-variant-numeric:tabular-nums;line-height:1.2}
+.metric .n{font-size:12px;color:var(--muted);margin-top:2px;min-height:16px}
+.grid.metrics{grid-template-columns:repeat(auto-fit,minmax(152px,1fr));margin:20px 0}
+
+.readout{font-size:14px;color:var(--muted);line-height:1.85;border-left:2px solid var(--gold);padding-left:14px}
+.readout b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.readout.warn{border-color:var(--clay)}
+
+.legend{display:flex;flex-wrap:wrap;gap:15px;font-size:12.5px;color:var(--muted);margin:6px 0 10px}
+.legend span{display:flex;align-items:center;gap:6px}
+.swatch{width:14px;height:3px;border-radius:2px;flex:0 0 auto}
+.swatch.dot{width:10px;height:10px;border-radius:3px}
+
+.chart-box{position:relative;width:100%;height:265px}
+.chart-box.pie{height:225px}
+canvas{width:100%;height:100%;display:block}
+
+.err{color:var(--clay);font-size:13.5px;min-height:20px;margin-bottom:4px}
+
+.cols{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));margin:18px 0}
+.col{border-top:2px solid;padding-top:12px}
+.col.a{border-color:var(--gold)}
+.col.b{border-color:var(--clay)}
+.col .title{font-size:14px;margin-bottom:10px}
+.col .pair{display:flex;gap:20px;flex-wrap:wrap}
+.col .pk{font-size:12px;color:var(--muted)}
+.col .pv{font-size:19px;font-variant-numeric:tabular-nums}
+
+.knee{background:var(--panel-2);border-radius:8px;padding:15px 17px;margin-top:18px;font-size:14.5px;line-height:1.65}
+.knee .big{font-size:22px;color:var(--gold);font-variant-numeric:tabular-nums}
+
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.seg button{
+  font:inherit;font-size:13.5px;cursor:pointer;background:transparent;color:var(--muted);
+  border:1px solid var(--rule);border-radius:20px;padding:7px 15px;
+}
+.seg button:hover{color:var(--text);border-color:var(--teal)}
+.seg button.on{background:var(--gold);color:#12201F;border-color:var(--gold);font-weight:600}
+
+details{margin-top:8px}
+summary{cursor:pointer;font-size:14.5px;color:var(--gold);padding:9px 0;list-style:none;display:flex;align-items:center;gap:9px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'';width:7px;height:7px;flex:0 0 auto;border-right:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold);transform:rotate(-45deg);margin-left:3px}
+details[open] summary::before{transform:rotate(45deg)}
+
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);padding-top:18px;max-width:66ch;margin-top:8px}
+
+@media (max-width:560px){
+  .wrap{padding:24px 14px 56px}
+  section{padding:18px 15px}
+  .metric .v{font-size:21px}
+  .chart-box{height:225px}
+  .tabs button{padding:10px 13px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Кредит: журнал платежей и расчёты</h1>
+<p class="lede">Для кредитов с дифференцированными платежами. Ведите историю выплат и считайте, что даст досрочное погашение. С входом через Google данные синхронизируются между устройствами через файл на вашем Диске.</p>
+
+<div class="syncbar" id="syncBar">
+  <span class="dot" id="syncDot" aria-hidden="true"></span>
+  <span class="status" id="syncStatus">Данные хранятся только в этом браузере</span>
+  <span class="acts">
+    <button type="button" class="btn small solid" id="signInBtn">Войти через Google</button>
+    <button type="button" class="btn small" id="pullBtn" hidden>Обновить из таблицы</button>
+    <a class="btn small" id="openSheet" href="#" target="_blank" rel="noopener" hidden>Файл на Диске</a>
+    <button type="button" class="btn small quiet" id="signOutBtn" hidden>Отключить</button>
+  </span>
+</div>
+<div class="err" id="syncErr" style="margin:-6px 0 14px"></div>
+
+<details id="setupBox" style="margin-bottom:20px">
+  <summary>Настройка Google-входа (один раз)</summary>
+  <div class="setup">
+    <p>После входа данные хранятся в файле <code>kredit-dannye.json</code> на вашем Google Диске. Приложение видит только этот файл и ничего больше. Чтобы вход работал, нужен бесплатный OAuth Client ID из Google Cloud: владелец сайта прописывает его в коде, и тогда остальным настраивать нечего. Если заполнить поле ниже вручную, значение сохранится только в этом браузере.</p>
+    <ol>
+      <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> и создайте проект.</li>
+      <li>APIs &amp; Services → Library: включите <b>Google Drive API</b>. Больше ничего включать не нужно.</li>
+      <li>OAuth consent screen → External. Заполните название и почту. В разделе Data Access добавьте единственный scope <code>.../auth/drive.file</code> — он несенситивный, проверка приложения не требуется.</li>
+      <li>Нажмите <b>Publish app</b>. Без этого войти смогут только вручную добавленные тестовые пользователи, максимум 100.</li>
+      <li>Credentials → Create credentials → OAuth client ID → Web application. В <b>Authorized JavaScript origins</b> добавьте адрес сайта, например <code>https://ваш-логин.github.io</code>. Поле redirect URI заполнять не нужно.</li>
+      <li>Скопируйте Client ID сюда или впишите его в начало файла в строку <code>var GOOGLE_CLIENT_ID</code>.</li>
+    </ol>
+    <label for="clientId">OAuth Client ID</label>
+    <input type="text" id="clientId" placeholder="123456789-abc.apps.googleusercontent.com" spellcheck="false">
+    <div class="hint">Client ID не секрет: он всегда виден в коде страницы. Доступ защищён тем, что Google пускает запросы только с разрешённых доменов.</div>
+  </div>
+</details>
+
+<div class="tabs" role="tablist">
+  <button type="button" role="tab" class="on" data-tab="main" aria-selected="true">Мой кредит</button>
+  <button type="button" role="tab" data-tab="calc" aria-selected="false">Расчёты</button>
+</div>
+
+<!-- ================= ВКЛАДКА 1 ================= -->
+<div class="page on" id="page-main" role="tabpanel">
+
+<section class="params">
+  <h2>Параметры кредита</h2>
+  <p class="sub">Общие данные для обеих вкладок. Всё есть в кредитном договоре.</p>
+  <div class="grid inputs">
+    <div>
+      <label for="orig">Сумма кредита</label>
+      <input type="number" id="orig" value="100000" min="1" step="1000">
+    </div>
+    <div>
+      <label for="rate">Ставка, % годовых</label>
+      <input type="number" id="rate" value="12" min="0" max="200" step="0.01">
+    </div>
+    <div>
+      <label for="term">Срок, месяцев</label>
+      <input type="number" id="term" value="60" min="1" step="1">
+      <div class="hint" id="termHint"></div>
+    </div>
+    <div>
+      <label for="start">Дата получения</label>
+      <input type="date" id="start">
+      <div class="hint" id="startHint"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="split">
+    <div>
+      <h3>Платежи</h3>
+      <div class="addrow">
+        <div>
+          <label for="nDate">Дата платежа</label>
+          <input type="date" id="nDate">
+        </div>
+        <div>
+          <label for="nPrin">В основной долг</label>
+          <input type="number" id="nPrin" min="0" step="1" placeholder="0">
+        </div>
+        <div>
+          <label for="nInt">В проценты</label>
+          <input type="number" id="nInt" min="0" step="1" placeholder="0">
+        </div>
+        <button type="button" class="btn solid" id="addBtn">Добавить</button>
+      </div>
+      <div class="err" id="addErr"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Дата</th>
+              <th scope="col">В основной долг</th>
+              <th scope="col">В проценты</th>
+              <th scope="col">Всего</th>
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody id="payBody"></tbody>
+          <tfoot id="payFoot"></tfoot>
+        </table>
+      </div>
+      <div class="btnrow">
+        <button type="button" class="btn" id="exportBtn">Скачать копию</button>
+        <button type="button" class="btn" id="importBtn">Загрузить из файла</button>
+        <input type="file" id="importInput" accept="application/json,.json" hidden>
+        <button type="button" class="btn quiet" id="clearBtn">Очистить всё</button>
+      </div>
+      <div class="hint" id="ioHint"></div>
+    </div>
+
+    <div>
+      <h3>Сводка</h3>
+      <div class="summary">
+        <div class="srow"><span class="k">Всего уплачено по кредиту</span><span class="v" id="sTotal">—</span></div>
+        <div class="srow"><span class="k">Из них на проценты</span><span class="v clay" id="sInt">—</span></div>
+        <div class="srow"><span class="k">Погашено основного долга</span><span class="v ok" id="sPrin">—</span></div>
+        <div class="srow"><span class="k">Осталось основного долга</span><span class="v gold" id="sLeft">—</span></div>
+        <div class="srow"><span class="k">Прошло со дня выдачи</span><span class="v teal" id="sMonths">—</span></div>
+        <div class="srow"><span class="k">Проценты в среднем за месяц</span><span class="v" id="sAvgInt">—</span></div>
+      </div>
+      <div class="readout" id="progressNote" style="margin-top:16px"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="charts">
+    <div>
+      <h3>Доля погашенного долга</h3>
+      <div class="legend">
+        <span><i class="swatch dot" style="background:#7FCBA4"></i>Погашено</span>
+        <span><i class="swatch dot" style="background:#2B4A45"></i>Осталось</span>
+      </div>
+      <div class="chart-box pie"><canvas id="chartPie" role="img" aria-label="Круговая диаграмма доли погашенного основного долга">Доля погашенного основного долга.</canvas></div>
+    </div>
+    <div>
+      <h3>Динамика основного долга</h3>
+      <div class="legend">
+        <span><i class="swatch" style="background:#F2C14E"></i>Факт по вашим платежам</span>
+        <span><i class="swatch" style="background:#5F9E95"></i>План банка</span>
+      </div>
+      <div class="chart-box"><canvas id="chartBal" role="img" aria-label="График снижения основного долга: фактический против планового графика банка">Снижение основного долга по факту в сравнении с планом банка.</canvas></div>
+      <div class="hint" id="balHint"></div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<!-- ================= ВКЛАДКА 2 ================= -->
+<div class="page" id="page-calc" role="tabpanel">
+
+<section class="params">
+  <div class="readout" id="calcBase"></div>
+</section>
+
+<div id="calcBody">
+
+<section>
+  <h2>Срок и переплата</h2>
+  <p class="sub">Двигайте платёж и смотрите, когда кредит закроется и сколько уйдёт на проценты. Бирюзовая линия — минимальный платёж по графику банка, он убывает вместе с остатком долга.</p>
+  <div class="slider-row">
+    <span class="name">Платёж в месяц</span>
+    <input type="range" id="payA" min="0" max="100" value="0" step="50">
+    <span class="val" id="payAOut">—</span>
+  </div>
+  <div class="err" id="errA"></div>
+  <div class="grid metrics">
+    <div class="metric"><div class="k">Срок выплаты</div><div class="v" id="aMonths">—</div><div class="n" id="aYears"></div></div>
+    <div class="metric"><div class="k">Дата закрытия</div><div class="v" id="aDate">—</div><div class="n">от сегодня</div></div>
+    <div class="metric"><div class="k">Переплата по процентам</div><div class="v clay" id="aInt">—</div><div class="n" id="aPct"></div></div>
+    <div class="metric"><div class="k">Экономия против минимума</div><div class="v ok" id="aSaved">—</div><div class="n" id="aSavedMo"></div></div>
+  </div>
+  <div class="legend">
+    <span><i class="swatch" style="background:#5F9E95"></i>Минимальный платёж</span>
+    <span><i class="swatch" style="background:#F2C14E"></i>Ваш платёж</span>
+  </div>
+  <div class="chart-box"><canvas id="chartA" role="img" aria-label="Размер платежа по месяцам: минимальный против выбранного">Размер платежа по месяцам.</canvas></div>
+</section>
+
+<section>
+  <h2>Где кривая ломается</h2>
+  <p class="sub">Переплата падает с ростом платежа, но всё медленнее. Сначала каждая добавленная тысяча экономит десятки тысяч, потом отдача становится скромной.</p>
+  <div class="legend">
+    <span><i class="swatch" style="background:#E0765C"></i>Переплата по процентам</span>
+    <span><i class="swatch dot" style="background:#F2C14E"></i>Ваш платёж</span>
+    <span><i class="swatch dot" style="background:#5F9E95"></i>Точка перелома</span>
+  </div>
+  <div class="chart-box"><canvas id="chartB" role="img" aria-label="Кривая переплаты в зависимости от размера платежа">Кривая переплаты по процентам в зависимости от платежа.</canvas></div>
+  <div class="knee" id="kneeBox"></div>
+</section>
+
+<section>
+  <h2>Две стратегии переплаты</h2>
+  <p class="sub">Можно платить одну сумму до конца срока, а можно каждый месяц добавлять надбавку к минимуму. Во втором случае платёж убывает: надбавка идёт целиком в тело долга.</p>
+  <div class="slider-row">
+    <span class="name">Фиксированный платёж</span>
+    <input type="range" id="payC" min="0" max="100" value="0" step="50">
+    <span class="val" id="payCOut">—</span>
+  </div>
+  <div class="slider-row">
+    <span class="name">Надбавка к минимуму</span>
+    <input type="range" id="extra" class="thumb-clay" min="0" max="100" value="0" step="50">
+    <span class="val" id="extraOut">—</span>
+  </div>
+  <div class="err" id="errC"></div>
+  <div class="cols">
+    <div class="col a">
+      <div class="title">Фиксированный платёж</div>
+      <div class="pair">
+        <div><div class="pk">срок</div><div class="pv" id="cAM">—</div></div>
+        <div><div class="pk">переплата</div><div class="pv" id="cAI">—</div></div>
+        <div><div class="pk">средний платёж</div><div class="pv" id="cAAvg">—</div></div>
+      </div>
+    </div>
+    <div class="col b">
+      <div class="title">Минимум плюс надбавка</div>
+      <div class="pair">
+        <div><div class="pk">срок</div><div class="pv" id="cBM">—</div></div>
+        <div><div class="pk">переплата</div><div class="pv" id="cBI">—</div></div>
+        <div><div class="pk">первый и последний</div><div class="pv" id="cBP">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="readout" id="stratNote"></div>
+  <div class="legend" style="margin-top:14px">
+    <span><i class="swatch" style="background:#5F9E95"></i>Минимальный платёж</span>
+    <span><i class="swatch" style="background:#F2C14E"></i>Фиксированный</span>
+    <span><i class="swatch" style="background:#E0765C"></i>Минимум плюс надбавка</span>
+  </div>
+  <div class="chart-box"><canvas id="chartC" role="img" aria-label="Сравнение траекторий платежа для двух стратегий">Сравнение траекторий платежа для двух стратегий.</canvas></div>
+</section>
+
+<section>
+  <h2>График будущих платежей</h2>
+  <p class="sub">Сколько придётся платить каждый месяц по выбранному сценарию, начиная со следующего платежа. Видно, через сколько месяцев платёж опустится до комфортного.</p>
+  <div class="seg" role="group" aria-label="Сценарий для графика">
+    <button type="button" data-scen="min">Только минимум</button>
+    <button type="button" data-scen="fixed">Фиксированный платёж</button>
+    <button type="button" data-scen="extra" class="on">Минимум плюс надбавка</button>
+  </div>
+  <div class="hint" id="schedHint"></div>
+  <details id="schedDetails">
+    <summary id="schedSummary">Показать график</summary>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Месяц</th>
+            <th scope="col">Платёж</th>
+            <th scope="col">В счёт долга</th>
+            <th scope="col">Проценты</th>
+            <th scope="col">Остаток после</th>
+          </tr>
+        </thead>
+        <tbody id="schedBody"></tbody>
+        <tfoot id="schedFoot"></tfoot>
+      </table>
+    </div>
+  </details>
+</section>
+
+</div>
+</div>
+
+<footer>
+  Расчёт ориентировочный. Банк может округлять иначе, считать проценты по точному числу дней в месяце или брать комиссии, поэтому итоговые суммы обычно отличаются на несколько процентов. Без входа через Google данные хранятся только в вашем браузере. После входа они лежат в файле на вашем Google Диске — доступ к нему есть только у вас, сервера у этого сайта нет.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   НАСТРОЙКА: вставьте сюда OAuth Client ID из Google Cloud Console.
+   Тогда пользователям сайта не нужно ничего настраивать — только войти.
+   Client ID не является секретом: доступ ограничен списком доменов,
+   которые вы укажете в Authorized JavaScript origins.
+   ===================================================================== */
+var GOOGLE_CLIENT_ID = '';
+
+/* ================= утилиты ================= */
+function nf(n){ return Math.round(n).toLocaleString('ru-RU'); }
+function money(n){ return nf(n) + ' \u0440.'; }
+function plural(n, one, few, many){
+  var a = Math.abs(n) % 100, b = a % 10;
+  if(a > 10 && a < 20) return many;
+  if(b > 1 && b < 5) return few;
+  if(b === 1) return one;
+  return many;
+}
+function monthsText(m){ return m + ' ' + plural(m,'месяц','месяца','месяцев'); }
+function yearsText(m){
+  var y = Math.floor(m/12), r = m%12;
+  if(y === 0) return monthsText(r);
+  if(r === 0) return y + ' ' + plural(y,'год','года','лет');
+  return y + ' ' + plural(y,'год','года','лет') + ' ' + r + ' ' + plural(r,'месяц','месяца','месяцев');
+}
+var MONTHS_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+function fmtDate(d){
+  return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()] + ' <span class="yr">' + String(d.getFullYear()).slice(2) + '</span>';
+}
+function parseDate(s){ return s ? new Date(s + 'T00:00:00') : null; }
+function isoDate(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function monthsBetween(from, to){
+  if(!from || isNaN(from.getTime())) return null;
+  var m = (to.getFullYear()-from.getFullYear())*12 + (to.getMonth()-from.getMonth());
+  if(to.getDate() < from.getDate()) m -= 1;
+  return m;
+}
+
+/* ================= состояние ================= */
+var STORE_KEY = 'credit-tracker-v1';
+var payments = [];   /* {date:'YYYY-MM-DD', principal:Number, interest:Number} */
+
+function saveState(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      orig:+el('orig').value, rate:+el('rate').value,
+      term:+el('term').value, start:el('start').value,
+      payments:payments
+    }));
+  }catch(e){ /* приватный режим — просто не сохраняем */ }
+  if(typeof schedulePush === 'function') schedulePush();
+}
+function loadState(){
+  var raw = null;
+  try{ raw = localStorage.getItem(STORE_KEY); }catch(e){}
+  if(!raw) return false;
+  try{ applyState(JSON.parse(raw)); return true; }catch(e){ return false; }
+}
+function applyState(s){
+  if(!s || typeof s !== 'object') throw new Error('bad');
+  if(s.orig)  el('orig').value  = s.orig;
+  if(s.rate !== undefined) el('rate').value = s.rate;
+  if(s.term)  el('term').value  = s.term;
+  if(s.start) el('start').value = s.start;
+  payments = Array.isArray(s.payments) ? s.payments.filter(function(p){
+    return p && p.date && isFinite(+p.principal) && isFinite(+p.interest);
+  }).map(function(p){
+    return { date:String(p.date), principal:Math.max(+p.principal,0), interest:Math.max(+p.interest,0) };
+  }) : [];
+}
+
+function el(id){ return document.getElementById(id); }
+
+function readParams(){
+  var orig = Math.max(+el('orig').value || 0, 0);
+  var rate = Math.max(+el('rate').value || 0, 0);
+  var term = Math.max(parseInt(el('term').value,10) || 1, 1);
+  var start = parseDate(el('start').value);
+  var sorted = payments.slice().sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var paidPrin = 0, paidInt = 0;
+  sorted.forEach(function(p){ paidPrin += p.principal; paidInt += p.interest; });
+  paidPrin = Math.min(paidPrin, orig);
+  return {
+    orig:orig, rate:rate, term:term, start:start,
+    d:orig/term, r:rate/100/12,
+    bal:Math.max(orig - paidPrin, 0),
+    paidPrin:paidPrin, paidInt:paidInt,
+    list:sorted,
+    elapsed: start ? monthsBetween(start, new Date()) : null
+  };
+}
+
+/* ================= модель ================= */
+function simExtra(p, extra){
+  var b = p.bal, ti = 0, m = 0, pays = [], rows = [], step = p.d + extra;
+  if(step <= 0) return { months:0, interest:0, pays:[], rows:[] };
+  while(b > 0.005 && m < 4000){
+    var i = b * p.r, pr = step > b ? b : step;
+    b -= pr; ti += i; m++;
+    pays.push(pr + i);
+    rows.push({ pay:pr+i, principal:pr, interest:i, balance:b });
+  }
+  return { months:m, interest:ti, pays:pays, rows:rows };
+}
+function simFixed(p, pay){
+  var b = p.bal, ti = 0, m = 0, pays = [], rows = [];
+  while(b > 0.005 && m < 4000){
+    var i = b * p.r, pr = pay - i;
+    if(pr <= 0.005) return null;
+    if(pr > b) pr = b;
+    b -= pr; ti += i; m++;
+    pays.push(pr + i);
+    rows.push({ pay:pr+i, principal:pr, interest:i, balance:b });
+  }
+  return { months:m, interest:ti, pays:pays, rows:rows };
+}
+function payProblem(p, pay, mandatory){
+  var interest = p.bal * p.r;
+  if(pay <= 0) return 'Платёж не задан. Минимум по договору сейчас ' + money(mandatory) + '.';
+  if(pay <= interest) return 'Платёж меньше процентов за месяц (' + money(interest) + '). Долг не уменьшается, а растёт: невыплаченные проценты копятся, и кредит не закроется никогда.';
+  if(pay < mandatory - 0.5) return 'Платёж ниже обязательного по договору (' + money(mandatory) + '): ' + money(p.d) + ' фиксированной части долга плюс ' + money(interest) + ' процентов на остаток. Долг бы уменьшался, но банк зафиксирует просрочку и начислит пени, поэтому такой график не рассчитывается.';
+  return null;
+}
+
+/* ================= графики ================= */
+function niceTicks(min, max, want){
+  if(max <= min) max = min + 1;
+  var raw = (max - min) / want;
+  var mag = Math.pow(10, Math.floor(Math.log(raw)/Math.LN10));
+  var norm = raw/mag, s;
+  if(norm <= 1) s = 1; else if(norm <= 2) s = 2; else if(norm <= 2.5) s = 2.5; else if(norm <= 5) s = 5; else s = 10;
+  var step = s*mag, lo = Math.floor(min/step)*step, hi = Math.ceil(max/step)*step, out = [];
+  for(var v = lo; v <= hi + step*0.001; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function shortNum(v){
+  var a = Math.abs(v);
+  if(a >= 1000000) return (v/1000000).toFixed(a >= 10000000 ? 0 : 1).replace('.',',') + ' млн';
+  if(a >= 10000) return Math.round(v/1000) + ' тыс.';
+  if(a >= 1000) return (v/1000).toFixed(1).replace('.',',') + ' тыс.';
+  return nf(v);
+}
+function setupCanvas(canvas){
+  var dpr = window.devicePixelRatio || 1, box = canvas.parentNode;
+  var W = box.clientWidth, H = box.clientHeight;
+  if(W < 10 || H < 10) return null;
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  var g = canvas.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,W,H);
+  return { g:g, W:W, H:H };
+}
+
+function draw(canvas, cfg){
+  var c = setupCanvas(canvas); if(!c) return;
+  var g = c.g, W = c.W, H = c.H;
+  var padL = 62, padR = 10, padT = 12, padB = 36;
+  var plotW = W-padL-padR, plotH = H-padT-padB;
+  if(plotW < 40 || plotH < 40) return;
+
+  var xs = [], ys = [];
+  cfg.series.forEach(function(s){ s.points.forEach(function(pt){ xs.push(pt.x); ys.push(pt.y); }); });
+  if(!xs.length) return;
+  var xMin = Math.min.apply(null,xs), xMax = Math.max.apply(null,xs), yMax = Math.max.apply(null,ys);
+  if(xMax === xMin) xMax = xMin + 1;
+
+  var yTicks = niceTicks(0, yMax, 4), yTop = yTicks[yTicks.length-1] || 1;
+  var xTicks = niceTicks(xMin, xMax, Math.max(3, Math.min(7, Math.floor(plotW/95))))
+    .filter(function(t){ return t >= xMin-1e-9 && t <= xMax+1e-9; });
+
+  var X = function(v){ return padL + (v-xMin)/(xMax-xMin)*plotW; };
+  var Y = function(v){ return padT + plotH - (v/yTop)*plotH; };
+
+  g.font = '11px -apple-system,Segoe UI,Roboto,sans-serif';
+  g.textBaseline = 'middle';
+  yTicks.forEach(function(t){
+    var y = Y(t);
+    g.strokeStyle = '#2B4A45'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(padL, Math.round(y)+0.5); g.lineTo(W-padR, Math.round(y)+0.5); g.stroke();
+    g.fillStyle = '#8FA9A3'; g.textAlign = 'right';
+    g.fillText(shortNum(t), padL-8, y);
+  });
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  xTicks.forEach(function(t){
+    g.fillStyle = '#8FA9A3';
+    g.fillText(cfg.xFmt ? cfg.xFmt(t) : nf(t), X(t), padT+plotH+9);
+  });
+  g.fillStyle = '#6C8A85'; g.textAlign = 'right';
+  g.fillText(cfg.xLabel || '', W-padR, padT+plotH+22);
+
+  (cfg.marks || []).forEach(function(mk){
+    g.save(); g.strokeStyle = mk.color; g.lineWidth = 1; g.setLineDash([3,3]);
+    g.beginPath(); g.moveTo(X(mk.x), padT); g.lineTo(X(mk.x), padT+plotH); g.stroke(); g.restore();
+  });
+  cfg.series.forEach(function(s){
+    if(s.points.length < 2) return;
+    g.save();
+    g.strokeStyle = s.color; g.lineWidth = s.width || 2;
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    if(s.dash) g.setLineDash(s.dash);
+    g.beginPath();
+    s.points.forEach(function(pt,i){ i ? g.lineTo(X(pt.x),Y(pt.y)) : g.moveTo(X(pt.x),Y(pt.y)); });
+    g.stroke(); g.restore();
+  });
+  (cfg.dots || []).forEach(function(dt){
+    g.fillStyle = dt.color;
+    g.beginPath(); g.arc(X(dt.x), Y(dt.y), dt.r || 5, 0, Math.PI*2); g.fill();
+    g.strokeStyle = '#172B28'; g.lineWidth = 2; g.stroke();
+  });
+}
+
+function drawDonut(canvas, done, total){
+  var c = setupCanvas(canvas); if(!c) return;
+  var g = c.g, W = c.W, H = c.H;
+  var cx = W/2, cy = H/2, R = Math.min(W,H)/2 - 8, r = R*0.62;
+  var frac = total > 0 ? Math.min(Math.max(done/total,0),1) : 0;
+
+  function ring(from, to, color){
+    g.beginPath();
+    g.arc(cx, cy, R, from, to, false);
+    g.arc(cx, cy, r, to, from, true);
+    g.closePath(); g.fillStyle = color; g.fill();
+  }
+  var start = -Math.PI/2;
+  ring(start, start + Math.PI*2, '#2B4A45');
+  if(frac > 0.0001) ring(start, start + Math.PI*2*frac, '#7FCBA4');
+
+  g.fillStyle = '#E8EFEC';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '600 26px -apple-system,Segoe UI,Roboto,sans-serif';
+  g.fillText((frac*100).toFixed(frac >= 0.1 ? 0 : 1).replace('.',',') + '%', cx, cy - 8);
+  g.font = '12px -apple-system,Segoe UI,Roboto,sans-serif';
+  g.fillStyle = '#8FA9A3';
+  g.fillText('погашено', cx, cy + 14);
+}
+
+/* ================= вкладка 1 ================= */
+function renderPayments(p){
+  var body = el('payBody'), foot = el('payFoot');
+  if(!p.list.length){
+    body.innerHTML = '<tr><td colspan="5" class="empty">Платежей пока нет. Добавьте первый через форму выше.</td></tr>';
+    foot.innerHTML = '';
+    return;
+  }
+  body.innerHTML = p.list.map(function(row){
+    var idx = payments.indexOf(row);
+    return '<tr>' +
+      '<td><input type="date" data-i="' + idx + '" data-f="date" value="' + row.date + '"></td>' +
+      '<td><input type="number" data-i="' + idx + '" data-f="principal" min="0" step="1" value="' + row.principal + '"></td>' +
+      '<td><input type="number" data-i="' + idx + '" data-f="interest" min="0" step="1" value="' + row.interest + '"></td>' +
+      '<td class="pay">' + nf(row.principal + row.interest) + '</td>' +
+      '<td><button type="button" class="del" data-del="' + idx + '" aria-label="Удалить платёж">&times;</button></td>' +
+    '</tr>';
+  }).join('');
+  foot.innerHTML = '<tr><td>Итого ' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') + '</td>' +
+    '<td>' + nf(p.paidPrin) + '</td><td class="int">' + nf(p.paidInt) + '</td>' +
+    '<td>' + nf(p.paidPrin + p.paidInt) + '</td><td></td></tr>';
+}
+
+function renderSummary(p){
+  var total = p.paidPrin + p.paidInt;
+  el('sTotal').textContent = money(total);
+  el('sInt').textContent = money(p.paidInt);
+  el('sPrin').textContent = money(p.paidPrin);
+  el('sLeft').textContent = money(p.bal);
+  el('sMonths').textContent = (p.elapsed === null) ? '—' : monthsText(Math.max(p.elapsed,0));
+
+  var per = (p.elapsed !== null && p.elapsed > 0) ? p.elapsed : p.list.length;
+  el('sAvgInt').textContent = per > 0 ? money(p.paidInt/per) : '—';
+
+  el('termHint').textContent = p.term ? yearsText(p.term) : '';
+  el('startHint').textContent = (p.elapsed === null) ? '' : (p.elapsed >= 0 ? 'прошло ' + monthsText(p.elapsed) : 'дата в будущем');
+
+  var note = el('progressNote');
+  note.className = 'readout';
+  if(p.elapsed !== null && p.elapsed >= 0 && p.orig > 0){
+    var planned = Math.min(p.d * p.elapsed, p.orig);
+    var ahead = p.paidPrin - planned;
+    var aheadMo = p.d > 0 ? ahead/p.d : 0;
+    if(Math.abs(aheadMo) < 0.5){
+      note.innerHTML = 'Идёте ровно по графику банка: по договору на этот момент должно быть погашено <b>' + money(planned) + '</b>.';
+    } else if(ahead > 0){
+      note.innerHTML = 'Опережаете график на <b>' + money(ahead) + '</b> — это примерно ' + monthsText(Math.round(aheadMo)) + ' платежей вперёд. По договору сейчас должно быть погашено ' + money(planned) + '.';
+    } else {
+      note.className = 'readout warn';
+      note.innerHTML = 'Отстаёте от графика на <b>' + money(-ahead) + '</b>: по договору на этот момент должно быть погашено ' + money(planned) + '.';
+    }
+  } else {
+    note.innerHTML = 'Укажите дату получения кредита, чтобы сравнить ваш темп с графиком банка.';
+  }
+}
+
+function renderBalanceChart(p){
+  var fact = [{x:0, y:p.orig}];
+  var running = p.orig;
+  if(p.start){
+    p.list.forEach(function(row){
+      var dd = parseDate(row.date);
+      var m = dd ? monthsBetween(p.start, dd) : null;
+      if(m === null || m < 0) m = 0;
+      running = Math.max(running - row.principal, 0);
+      fact.push({x:m + 1, y:running});
+    });
+  }
+  var lastX = fact.length > 1 ? fact[fact.length-1].x : 0;
+  var span = Math.max(lastX, p.elapsed || 0, 1);
+  var plan = [];
+  for(var m = 0; m <= span; m++) plan.push({x:m, y:Math.max(p.orig - p.d*m, 0)});
+
+  var hint = el('balHint');
+  if(!p.start){
+    hint.textContent = 'Укажите дату получения кредита, чтобы построить динамику.';
+  } else if(fact.length < 2){
+    hint.textContent = 'Добавьте платежи, чтобы увидеть фактическую динамику.';
+  } else {
+    hint.textContent = 'Чем ниже золотая линия относительно бирюзовой, тем сильнее вы опережаете график.';
+  }
+
+  draw(el('chartBal'), {
+    xLabel:'месяц с начала кредита',
+    series:[
+      {points:plan, color:'#5F9E95', dash:[4,4]},
+      {points:fact.length > 1 ? fact : [], color:'#F2C14E'}
+    ]
+  });
+}
+
+/* ================= вкладка 2 ================= */
+function setRange(input, lo, hi, step, init){
+  lo = Math.floor(lo/step)*step; hi = Math.ceil(hi/step)*step;
+  if(hi <= lo) hi = lo + step*20;
+  var was = +input.value, first = input.dataset.init !== '1';
+  input.min = lo; input.max = hi; input.step = step;
+  if(first){
+    input.value = Math.min(hi, Math.max(lo, Math.ceil(init/step)*step));
+    input.dataset.init = '1';
+  } else if(was < lo || was > hi){
+    input.value = Math.min(hi, Math.max(lo, was));
+  }
+}
+function findKnee(pts){
+  if(pts.length < 3) return null;
+  var x0 = pts[0].x, y0 = pts[0].y, x1 = pts[pts.length-1].x, y1 = pts[pts.length-1].y;
+  var xr = (x1-x0) || 1, yr = (y0-y1) || 1, best = null, bestD = -1;
+  pts.forEach(function(pt){
+    var d = Math.abs((pt.x-x0)/xr + (pt.y-y1)/yr - 1)/Math.SQRT2;
+    if(d > bestD){ bestD = d; best = pt; }
+  });
+  return best;
+}
+
+var SCEN = null, SCEN_KEY = 'extra', LAST_P = null;
+
+function renderCalc(p){
+  var base = el('calcBase'), bodyWrap = el('calcBody');
+  if(p.orig <= 0){
+    base.innerHTML = 'Заполните параметры кредита на вкладке «Мой кредит».';
+    bodyWrap.style.display = 'none';
+    return;
+  }
+  if(p.bal <= 0){
+    base.innerHTML = 'По внесённым платежам кредит полностью погашен. Поздравляю.';
+    bodyWrap.style.display = 'none';
+    return;
+  }
+  bodyWrap.style.display = '';
+
+  var mandatory = p.d + p.bal*p.r;
+  var minRun = simExtra(p, 0);
+
+  base.innerHTML =
+    'Кредит <b>' + money(p.orig) + '</b> под <b>' + String(p.rate).replace('.',',') + '%</b> на ' + monthsText(p.term) +
+    ' · погашено <b>' + money(p.paidPrin) + '</b> · остаток <b>' + money(p.bal) + '</b><br>' +
+    'Минимальный платёж сейчас <b>' + money(mandatory) + '</b> — из них ' + money(p.d) + ' в счёт долга и ' + money(p.bal*p.r) + ' проценты<br>' +
+    'Если платить только минимум: <b>' + monthsText(minRun.months) + '</b>, переплата <b>' + money(minRun.interest) + '</b>';
+
+  var step = Math.max(50, Math.round(mandatory/40/50)*50);
+  var hiPay = mandatory + p.bal/6;
+  var startPay = mandatory + (hiPay-mandatory)*0.25;
+  setRange(el('payA'), 0, hiPay, step, startPay);
+  setRange(el('payC'), 0, hiPay, step, startPay);
+  setRange(el('extra'), 0, p.bal/6, step, (hiPay-mandatory)*0.25);
+
+  /* блок 1 */
+  var payA = +el('payA').value;
+  el('payAOut').textContent = money(payA);
+  var problemA = payProblem(p, payA, mandatory);
+  var A = problemA ? null : simFixed(p, payA);
+  el('errA').textContent = problemA || '';
+  if(!A){
+    ['aMonths','aDate','aInt','aSaved'].forEach(function(id){ el(id).textContent = '—'; });
+    ['aYears','aPct','aSavedMo'].forEach(function(id){ el(id).textContent = ''; });
+  } else {
+    el('aMonths').textContent = monthsText(A.months);
+    el('aYears').textContent = yearsText(A.months);
+    var dt = new Date(); dt.setMonth(dt.getMonth() + A.months);
+    el('aDate').textContent = dt.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+    el('aInt').textContent = money(A.interest);
+    el('aPct').textContent = Math.round(A.interest/p.bal*100) + '% от остатка долга';
+    el('aSaved').textContent = money(Math.max(minRun.interest - A.interest,0));
+    el('aSavedMo').textContent = 'и на ' + monthsText(Math.max(minRun.months - A.months,0)) + ' раньше';
+  }
+  var sMin = minRun.pays.map(function(v,i){ return {x:i+1,y:v}; });
+  draw(el('chartA'), { xLabel:'месяц', series:[
+    {points:sMin, color:'#5F9E95', dash:[4,4]},
+    {points:A ? A.pays.map(function(v,i){ return {x:i+1,y:v}; }) : [], color:'#F2C14E'}
+  ]});
+
+  /* блок 2 */
+  var lo = mandatory, hi = +el('payA').max, curve = [];
+  for(var k = 0; k <= 90; k++){
+    var pv = lo + (hi-lo)*k/90, run = simFixed(p, pv);
+    if(run) curve.push({x:pv, y:run.interest});
+  }
+  var knee = findKnee(curve);
+  if(knee){
+    var atKnee = simFixed(p, knee.x);
+    var plus = A ? simFixed(p, payA + 500) : null;
+    el('kneeBox').innerHTML =
+      'Кривая ломается около <span class="big">' + money(knee.x) + '</span> в месяц. ' +
+      'На этом платеже кредит закрывается за ' + monthsText(atKnee.months) + ', переплата ' + money(atKnee.interest) + '. ' +
+      'Дальше платить больше по-прежнему выгодно, но отдача от каждого рубля резко падает.' +
+      (A ? '<br><br>На вашем платеже ' + money(payA) + ' следующие 500 р. в месяц сэкономят ' +
+        (plus ? money(Math.max(A.interest - plus.interest,0)) : '—') + ' процентов.' : '');
+  }
+  draw(el('chartB'), {
+    xLabel:'платёж в месяц', xFmt:shortNum,
+    series:[{points:curve, color:'#E0765C'}],
+    marks: knee ? [{x:knee.x, color:'#5F9E95'}] : [],
+    dots: (A ? [{x:payA, y:A.interest, color:'#F2C14E'}] : []).concat(knee ? [{x:knee.x,y:knee.y,color:'#5F9E95',r:4}] : [])
+  });
+
+  /* блок 3 */
+  var payC = +el('payC').value, extra = +el('extra').value;
+  el('payCOut').textContent = money(payC);
+  el('extraOut').textContent = '+' + money(extra);
+  var problemC = payProblem(p, payC, mandatory);
+  var C = problemC ? null : simFixed(p, payC);
+  var B = simExtra(p, extra);
+  el('errC').textContent = problemC || '';
+
+  if(C){
+    var avgC = C.pays.reduce(function(a,b){return a+b;},0)/C.months;
+    el('cAM').textContent = C.months + ' мес.';
+    el('cAI').textContent = money(C.interest);
+    el('cAAvg').textContent = money(avgC);
+  } else {
+    ['cAM','cAI','cAAvg'].forEach(function(id){ el(id).textContent = '—'; });
+  }
+  el('cBM').textContent = B.months + ' мес.';
+  el('cBI').textContent = money(B.interest);
+  el('cBP').textContent = money(B.pays[0]) + ' → ' + money(B.pays[B.pays.length-1]);
+
+  if(C){
+    var avgB = B.pays.reduce(function(a,b){return a+b;},0)/B.months;
+    var diff = C.interest - B.interest;
+    el('stratNote').innerHTML =
+      'Средний платёж: <b>' + money(avgC) + '</b> при фиксированном и <b>' + money(avgB) + '</b> при надбавке. ' +
+      (Math.abs(diff) < 1 ? 'Переплата одинаковая.'
+        : (diff > 0
+            ? 'Надбавка экономит <b>' + money(diff) + '</b> процентов, потому что нагружает бюджет сильнее в начале и деньги раньше попадают в тело долга.'
+            : 'Фиксированный платёж экономит <b>' + money(-diff) + '</b> процентов при такой настройке.')) +
+      ' Сравнивайте варианты при примерно равном среднем платеже.';
+  } else {
+    el('stratNote').innerHTML = 'Задайте корректный фиксированный платёж, чтобы сравнить его с надбавкой.';
+  }
+  draw(el('chartC'), { xLabel:'месяц', series:[
+    {points:sMin, color:'#5F9E95', dash:[4,4]},
+    {points:C ? C.pays.map(function(v,i){ return {x:i+1,y:v}; }) : [], color:'#F2C14E'},
+    {points:B.pays.map(function(v,i){ return {x:i+1,y:v}; }), color:'#E0765C'}
+  ]});
+
+  SCEN = {
+    min:  { run:minRun, label:'только минимум, без досрочки' },
+    fixed:{ run:A,      label:A ? 'фиксированный платёж ' + money(payA) : null },
+    extra:{ run:B,      label:'минимум плюс ' + money(extra) + ' в счёт долга' }
+  };
+  LAST_P = p;
+  buildSchedule(p);
+}
+
+function buildSchedule(p){
+  var pick = SCEN[SCEN_KEY];
+  if(!pick || !pick.run){ pick = SCEN.min; el('schedHint').textContent = 'Платёж задан некорректно, показан график по минимуму.'; }
+  else el('schedHint').textContent = pick.label;
+  var run = pick.run, sum = el('schedSummary');
+
+  sum.dataset.text = 'график на ' + monthsText(run.months) + ' до закрытия';
+  sum.textContent = (el('schedDetails').open ? 'Скрыть ' : 'Показать ') + sum.dataset.text;
+
+  /* отсчёт от следующего платежа после последнего фактического */
+  var cursor = null, payDay = p.start ? p.start.getDate() : null;
+  if(p.list.length){
+    var lastD = parseDate(p.list[p.list.length-1].date);
+    if(lastD){ cursor = new Date(lastD.getFullYear(), lastD.getMonth()+1, 1); if(payDay === null) payDay = lastD.getDate(); }
+  } else if(p.start && p.elapsed !== null && p.elapsed >= 0){
+    cursor = new Date(p.start.getFullYear(), p.start.getMonth() + p.elapsed + 1, 1);
+  }
+
+  var rows = [], tp = 0, ti = 0, tpr = 0;
+  run.rows.forEach(function(row,i){
+    tp += row.pay; ti += row.interest; tpr += row.principal;
+    var when = String(i+1);
+    if(cursor){
+      var y = cursor.getFullYear(), mo = cursor.getMonth();
+      var last = new Date(y, mo+1, 0).getDate();
+      when = Math.min(payDay, last) + ' ' + MONTHS_SHORT[mo] + ' <span class="yr">' + String(y).slice(2) + '</span>';
+      cursor.setMonth(cursor.getMonth()+1);
+    }
+    rows.push('<tr><td>' + when + '</td><td class="pay">' + nf(row.pay) + '</td><td>' + nf(row.principal) +
+      '</td><td class="int">' + nf(row.interest) + '</td><td>' + nf(row.balance) + '</td></tr>');
+  });
+  el('schedBody').innerHTML = rows.join('');
+  el('schedFoot').innerHTML = '<tr><td>Итого за ' + monthsText(run.months) + '</td><td>' + nf(tp) +
+    '</td><td>' + nf(tpr) + '</td><td class="int">' + nf(ti) + '</td><td>0</td></tr>';
+}
+
+/* ================= общий пересчёт ================= */
+function refresh(save){
+  var p = readParams();
+  renderPayments(p);
+  renderSummary(p);
+  drawDonut(el('chartPie'), p.paidPrin, p.orig);
+  renderBalanceChart(p);
+  renderCalc(p);
+  if(save !== false) saveState();
+}
+
+/* ================= события ================= */
+['orig','rate','term','start'].forEach(function(id){
+  el(id).addEventListener('input', function(){ refresh(); });
+  el(id).addEventListener('change', function(){ refresh(); });
+});
+['payA','payC','extra'].forEach(function(id){
+  el(id).addEventListener('input', function(){ renderCalc(readParams()); });
+});
+
+el('addBtn').addEventListener('click', function(){
+  var d = el('nDate').value;
+  var pr = +el('nPrin').value || 0, it = +el('nInt').value || 0;
+  var err = el('addErr');
+  if(!d){ err.textContent = 'Укажите дату платежа.'; return; }
+  if(pr <= 0 && it <= 0){ err.textContent = 'Укажите хотя бы одну сумму: в основной долг или в проценты.'; return; }
+  err.textContent = '';
+  payments.push({ date:d, principal:Math.max(pr,0), interest:Math.max(it,0) });
+  el('nPrin').value = ''; el('nInt').value = '';
+  var nd = parseDate(d); if(nd){ nd.setMonth(nd.getMonth()+1); el('nDate').value = isoDate(nd); }
+  refresh();
+});
+
+el('payBody').addEventListener('input', function(e){
+  var t = e.target;
+  if(t.dataset.i === undefined) return;
+  var row = payments[+t.dataset.i];
+  if(!row) return;
+  if(t.dataset.f === 'date') row.date = t.value;
+  else row[t.dataset.f] = Math.max(+t.value || 0, 0);
+  var p = readParams();
+  renderSummary(p); drawDonut(el('chartPie'), p.paidPrin, p.orig);
+  renderBalanceChart(p); renderCalc(p);
+  el('payFoot').innerHTML = '<tr><td>Итого ' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') +
+    '</td><td>' + nf(p.paidPrin) + '</td><td class="int">' + nf(p.paidInt) + '</td><td>' + nf(p.paidPrin + p.paidInt) + '</td><td></td></tr>';
+  saveState();
+});
+el('payBody').addEventListener('click', function(e){
+  var b = e.target.closest('[data-del]');
+  if(!b) return;
+  payments.splice(+b.dataset.del, 1);
+  refresh();
+});
+
+el('exportBtn').addEventListener('click', function(){
+  var data = { orig:+el('orig').value, rate:+el('rate').value, term:+el('term').value, start:el('start').value, payments:payments };
+  var blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kredit-' + isoDate(new Date()) + '.json';
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  el('ioHint').textContent = 'Файл сохранён. В нём параметры кредита и все платежи.';
+});
+el('importBtn').addEventListener('click', function(){ el('importInput').click(); });
+el('importInput').addEventListener('change', function(e){
+  var f = e.target.files[0]; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    try{
+      applyState(JSON.parse(rd.result));
+      refresh();
+      el('ioHint').textContent = 'Загружено платежей: ' + payments.length + '.';
+    }catch(err){
+      el('ioHint').textContent = 'Не удалось прочитать файл: он повреждён или не от этого калькулятора.';
+    }
+  };
+  rd.readAsText(f);
+  e.target.value = '';
+});
+el('clearBtn').addEventListener('click', function(){
+  if(!payments.length){ el('ioHint').textContent = 'Список платежей и так пуст.'; return; }
+  if(!confirm('Удалить все ' + payments.length + ' платежей? Отменить не получится.')) return;
+  payments = [];
+  refresh();
+  el('ioHint').textContent = 'Список платежей очищен.';
+});
+
+document.querySelectorAll('.tabs button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tabs button').forEach(function(b){
+      b.classList.remove('on'); b.setAttribute('aria-selected','false');
+    });
+    btn.classList.add('on'); btn.setAttribute('aria-selected','true');
+    document.querySelectorAll('.page').forEach(function(pg){ pg.classList.remove('on'); });
+    el('page-' + btn.dataset.tab).classList.add('on');
+    refresh(false);
+  });
+});
+document.querySelectorAll('.seg button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.seg button').forEach(function(b){ b.classList.remove('on'); });
+    btn.classList.add('on');
+    SCEN_KEY = btn.dataset.scen;
+    if(LAST_P) buildSchedule(LAST_P);
+  });
+});
+el('schedDetails').addEventListener('toggle', function(){
+  var s = el('schedSummary');
+  s.textContent = (this.open ? 'Скрыть ' : 'Показать ') + (s.dataset.text || 'график');
+});
+window.addEventListener('resize', function(){ refresh(false); });
+
+/* ================= Google Drive ================= */
+var CID_KEY = 'credit-client-id', FILE_KEY = 'credit-file-id';
+var FILE_NAME = 'kredit-dannye.json';
+var tokenClient = null, accessToken = null, tokenExp = 0;
+var fileId = null, pushTimer = null, lastSync = null;
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+function clientId(){ return (GOOGLE_CLIENT_ID || lsGet(CID_KEY) || '').trim(); }
+function connected(){ return !!accessToken && Date.now() < tokenExp; }
+function nowTime(){ return new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); }
+
+function setSync(state, text){
+  el('syncBar').className = 'syncbar' + (state ? ' ' + state : '');
+  el('syncStatus').textContent = text;
+}
+function syncErr(msg){ el('syncErr').textContent = msg || ''; }
+
+function paintSync(){
+  var live = !!fileId && connected();
+  el('signInBtn').hidden = live;
+  el('pullBtn').hidden = !live;
+  el('signOutBtn').hidden = !live;
+  var link = el('openSheet');
+  link.hidden = !fileId;
+  if(fileId) link.href = 'https://drive.google.com/file/d/' + fileId + '/view';
+  if(live){
+    setSync('live', 'Файл на вашем Google Диске' + (lastSync ? ' · сохранено в ' + lastSync : ''));
+  } else if(!clientId()){
+    setSync('', 'Данные хранятся только в этом браузере. Для синхронизации нужен Client ID — см. настройку ниже');
+  } else {
+    setSync('', 'Данные хранятся только в этом браузере');
+  }
+}
+
+/* --- авторизация --- */
+function makeTokenClient(){
+  if(tokenClient || !window.google || !google.accounts || !clientId()) return tokenClient;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId(),
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: function(){}
+  });
+  return tokenClient;
+}
+function getToken(interactive){
+  return new Promise(function(resolve, reject){
+    if(connected()) return resolve(accessToken);
+    var tc = makeTokenClient();
+    if(!tc) return reject(new Error('Google ещё не загрузился или не задан Client ID'));
+    tc.callback = function(res){
+      if(res.error) return reject(new Error(res.error_description || res.error));
+      accessToken = res.access_token;
+      tokenExp = Date.now() + (Number(res.expires_in || 3600) - 120)*1000;
+      resolve(accessToken);
+    };
+    try{ tc.requestAccessToken({ prompt: interactive ? 'consent' : '' }); }
+    catch(e){ reject(e); }
+  });
+}
+
+/* --- запросы --- */
+function api(url, opts, retried){
+  opts = opts || {};
+  return getToken(false).then(function(tok){
+    var h = Object.assign({ 'Authorization':'Bearer ' + tok }, opts.headers || {});
+    return fetch(url, Object.assign({}, opts, { headers:h }));
+  }).then(function(r){
+    if(r.status === 401 && !retried){ accessToken = null; return api(url, opts, true); }
+    if(!r.ok) return r.text().then(function(t){ throw new Error('Google вернул ошибку ' + r.status + ': ' + t.slice(0,200)); });
+    return r;
+  });
+}
+
+/* --- файл на Диске --- */
+function snapshot(){
+  return {
+    orig: +el('orig').value || 0,
+    rate: +el('rate').value || 0,
+    term: parseInt(el('term').value,10) || 0,
+    start: el('start').value || '',
+    payments: payments.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; }),
+    savedAt: new Date().toISOString()
+  };
+}
+
+function findFile(){
+  var q = encodeURIComponent("name='" + FILE_NAME + "' and trashed=false");
+  return api('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=10')
+    .then(function(r){ return r.json(); })
+    .then(function(res){ var f = (res.files || [])[0]; return f ? f.id : null; });
+}
+function createFile(){
+  var meta = { name: FILE_NAME, mimeType: 'application/json',
+    description: 'Данные калькулятора кредита. Можно открыть и отредактировать любым текстовым редактором.' };
+  var body = JSON.stringify(snapshot(), null, 2);
+  var b = '-------ktb' + Date.now();
+  var multipart =
+    '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
+    '\r\n--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + body +
+    '\r\n--' + b + '--';
+  return api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method:'POST',
+    headers:{ 'Content-Type':'multipart/related; boundary=' + b },
+    body: multipart
+  }).then(function(r){ return r.json(); }).then(function(res){ return res.id; });
+}
+function ensureFile(){
+  if(fileId){
+    return api('https://www.googleapis.com/drive/v3/files/' + fileId + '?fields=id')
+      .then(function(){ return fileId; })
+      .catch(function(){ fileId = null; lsDel(FILE_KEY); return ensureFile(); });
+  }
+  return findFile().then(function(id){ return id || createFile(); })
+    .then(function(id){ fileId = id; lsSet(FILE_KEY, id); return id; });
+}
+
+/* --- чтение --- */
+function pullFromDrive(){
+  if(!fileId) return Promise.resolve(false);
+  return api('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media')
+    .then(function(r){ return r.text(); })
+    .then(function(txt){
+      if(!txt || !txt.trim()) return false;
+      applyState(JSON.parse(txt));
+      return true;
+    });
+}
+
+/* --- запись --- */
+function pushToDrive(){
+  if(!fileId || !connected()) return Promise.resolve();
+  setSync('busy', 'Сохраняю на Диск…');
+  return api('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media&fields=id', {
+    method:'PATCH',
+    headers:{ 'Content-Type':'application/json; charset=UTF-8' },
+    body: JSON.stringify(snapshot(), null, 2)
+  }).then(function(){
+    lastSync = nowTime(); syncErr(''); paintSync();
+  }).catch(function(e){
+    setSync('bad','Не удалось сохранить на Диск');
+    syncErr(e.message);
+  });
+}
+function schedulePush(){
+  if(!fileId || !connected()) return;
+  clearTimeout(pushTimer);
+  setSync('busy','Есть несохранённые изменения…');
+  pushTimer = setTimeout(pushToDrive, 1600);
+}
+
+/* --- кнопки --- */
+el('signInBtn').addEventListener('click', function(){
+  syncErr('');
+  if(!clientId()){
+    syncErr('Сначала укажите OAuth Client ID в блоке настройки ниже.');
+    el('setupBox').open = true;
+    return;
+  }
+  setSync('busy','Подключаюсь к Google…');
+  getToken(true)
+    .then(ensureFile)
+    .then(pullFromDrive)
+    .then(function(loaded){
+      refresh(false);
+      lastSync = nowTime();
+      paintSync();
+      if(!loaded) return pushToDrive();
+    })
+    .catch(function(e){
+      setSync('bad','Не удалось подключиться');
+      syncErr(e.message + ' — проверьте, что домен сайта добавлен в Authorized JavaScript origins и приложение опубликовано.');
+    });
+});
+el('pullBtn').addEventListener('click', function(){
+  setSync('busy','Читаю файл с Диска…');
+  pullFromDrive().then(function(ok){
+    refresh(false);
+    lastSync = nowTime();
+    paintSync();
+    if(!ok) syncErr('Файл пуст — в нём пока нет данных.');
+  }).catch(function(e){ setSync('bad','Не удалось прочитать файл'); syncErr(e.message); });
+});
+el('signOutBtn').addEventListener('click', function(){
+  if(accessToken && window.google && google.accounts) google.accounts.oauth2.revoke(accessToken, function(){});
+  accessToken = null; tokenExp = 0; fileId = null; lastSync = null;
+  lsDel(FILE_KEY);
+  syncErr('');
+  paintSync();
+});
+el('clientId').addEventListener('change', function(){
+  var v = this.value.trim();
+  if(v) lsSet(CID_KEY, v); else lsDel(CID_KEY);
+  tokenClient = null;
+  paintSync();
+});
+
+/* ================= старт ================= */
+(function init(){
+  var today = new Date();
+  el('start').max = isoDate(today);
+  el('nDate').max = isoDate(today);
+  if(!loadState()){
+    var d = new Date(); d.setMonth(d.getMonth()-12); d.setDate(1);
+    el('start').value = isoDate(d);
+  }
+  el('nDate').value = el('nDate').value || isoDate(today);
+  refresh(false);
+
+  if(!GOOGLE_CLIENT_ID){
+    var saved = lsGet(CID_KEY);
+    if(saved) el('clientId').value = saved;
+  } else {
+    el('clientId').value = GOOGLE_CLIENT_ID;
+    el('clientId').disabled = true;
+  }
+  fileId = lsGet(FILE_KEY);
+  paintSync();
+
+  /* тихое восстановление сессии: токен живёт час, при возврате продлеваем без окна */
+  if(fileId && clientId()){
+    var tries = 0;
+    var wait = setInterval(function(){
+      if(++tries > 40) return clearInterval(wait);
+      if(!(window.google && google.accounts)) return;
+      clearInterval(wait);
+      getToken(false)
+        .then(pullFromDrive)
+        .then(function(){ refresh(false); lastSync = nowTime(); paintSync(); })
+        .catch(function(){ paintSync(); });
+    }, 250);
+  }
+})();
+</script>
+</body>
+</html>
