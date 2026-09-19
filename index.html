@@ -20,6 +20,7 @@
   --ok:#7FCBA4;
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html,body{margin:0;padding:0}
 body{
   background:var(--ink);color:var(--text);
@@ -43,25 +44,33 @@ h3{font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text)}
   background:var(--panel-2);border:1px solid var(--rule);border-radius:9px;
   padding:11px 15px;margin-bottom:12px;
 }
-.syncbar .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:0 0 auto}
-.syncbar.live .dot{background:var(--ok)}
-.syncbar.busy .dot{background:var(--gold)}
-.syncbar.bad .dot{background:var(--clay)}
 .syncbar .status{font-size:13.5px;color:var(--muted);flex:1 1 210px;min-width:0}
+.syncbar.live .status{color:var(--ok)}
+.syncbar.busy .status{color:var(--gold)}
+.syncbar.bad .status{color:var(--clay)}
 .syncbar .acts{display:flex;gap:7px;flex-wrap:wrap}
 .btn.small{padding:6px 12px;font-size:13px;text-decoration:none;display:inline-block}
 
-.setup{font-size:14px;color:var(--muted);line-height:1.65;border-left:2px solid var(--rule);padding-left:16px}
-.setup p{margin:0 0 10px}
-.setup ol{margin:0 0 14px;padding-left:20px}
-.setup li{margin-bottom:6px}
-.setup b{color:var(--text)}
-.setup a{color:var(--gold)}
-.setup code{background:var(--ink);border-radius:4px;padding:1px 5px;font-size:12.5px;color:var(--text)}
-.setup input[type=text]{
-  width:100%;max-width:520px;background:var(--ink);border:1px solid var(--rule);border-radius:6px;
-  color:var(--text);font:inherit;font-size:13.5px;padding:9px 11px;
+.who{position:relative}
+.userbtn{
+  display:flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;cursor:pointer;
+  background:transparent;color:var(--text);border:1px solid var(--rule);border-radius:20px;
+  padding:4px 11px 4px 4px;
 }
+.userbtn:hover{border-color:var(--teal)}
+.userbtn img{width:24px;height:24px;border-radius:50%;background:var(--rule);object-fit:cover;flex:0 0 auto}
+.userbtn .caret{width:5px;height:5px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);margin:-3px 2px 0 1px}
+.menu{
+  position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:190px;
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:9px;padding:5px;
+  box-shadow:0 10px 26px rgba(0,0,0,.45);
+}
+.menu button{
+  display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;cursor:pointer;
+  background:transparent;border:none;border-radius:6px;color:var(--text);padding:8px 11px;
+}
+.menu button:hover{background:var(--rule)}
+.menu button:last-child{color:var(--clay)}
 
 /* вкладки */
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:26px}
@@ -217,34 +226,24 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
 <p class="lede">Для кредитов с дифференцированными платежами. Ведите историю выплат и считайте, что даст досрочное погашение. С входом через Google данные синхронизируются между устройствами через файл на вашем Диске.</p>
 
 <div class="syncbar" id="syncBar">
-  <span class="dot" id="syncDot" aria-hidden="true"></span>
-  <span class="status" id="syncStatus">Данные хранятся только в этом браузере</span>
+  <span class="status" id="syncStatus"></span>
   <span class="acts">
     <button type="button" class="btn small solid" id="signInBtn">Войти через Google</button>
-    <button type="button" class="btn small" id="pullBtn" hidden>Обновить из таблицы</button>
+    <span class="who" id="whoBox" hidden>
+      <button type="button" class="userbtn" id="userBtn" aria-haspopup="true" aria-expanded="false">
+        <img id="userPic" alt="" referrerpolicy="no-referrer">
+        <span id="userName"></span>
+        <i class="caret" aria-hidden="true"></i>
+      </button>
+      <div class="menu" id="userMenu" hidden role="menu">
+        <button type="button" id="pullBtn" role="menuitem">Обновить из файла</button>
+        <button type="button" id="signOutBtn" role="menuitem">Отключить</button>
+      </div>
+    </span>
     <a class="btn small" id="openSheet" href="#" target="_blank" rel="noopener" hidden>Файл на Диске</a>
-    <button type="button" class="btn small quiet" id="signOutBtn" hidden>Отключить</button>
   </span>
 </div>
 <div class="err" id="syncErr" style="margin:-6px 0 14px"></div>
-
-<details id="setupBox" style="margin-bottom:20px">
-  <summary>Настройка Google-входа (один раз)</summary>
-  <div class="setup">
-    <p>После входа данные хранятся в файле <code>kredit-dannye.json</code> на вашем Google Диске. Приложение видит только этот файл и ничего больше. Чтобы вход работал, нужен бесплатный OAuth Client ID из Google Cloud: владелец сайта прописывает его в коде, и тогда остальным настраивать нечего. Если заполнить поле ниже вручную, значение сохранится только в этом браузере.</p>
-    <ol>
-      <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> и создайте проект.</li>
-      <li>APIs &amp; Services → Library: включите <b>Google Drive API</b>. Больше ничего включать не нужно.</li>
-      <li>OAuth consent screen → External. Заполните название и почту. В разделе Data Access добавьте единственный scope <code>.../auth/drive.file</code> — он несенситивный, проверка приложения не требуется.</li>
-      <li>Нажмите <b>Publish app</b>. Без этого войти смогут только вручную добавленные тестовые пользователи, максимум 100.</li>
-      <li>Credentials → Create credentials → OAuth client ID → Web application. В <b>Authorized JavaScript origins</b> добавьте адрес сайта, например <code>https://ваш-логин.github.io</code>. Поле redirect URI заполнять не нужно.</li>
-      <li>Скопируйте Client ID сюда или впишите его в начало файла в строку <code>var GOOGLE_CLIENT_ID</code>.</li>
-    </ol>
-    <label for="clientId">OAuth Client ID</label>
-    <input type="text" id="clientId" placeholder="123456789-abc.apps.googleusercontent.com" spellcheck="false">
-    <div class="hint">Client ID не секрет: он всегда виден в коде страницы. Доступ защищён тем, что Google пускает запросы только с разрешённых доменов.</div>
-  </div>
-</details>
 
 <div class="tabs" role="tablist">
   <button type="button" role="tab" class="on" data-tab="main" aria-selected="true">Мой кредит</button>
@@ -493,7 +492,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
    Client ID не является секретом: доступ ограничен списком доменов,
    которые вы укажете в Authorized JavaScript origins.
    ===================================================================== */
-var GOOGLE_CLIENT_ID = '1030570407661-2hn5va910v5gr4lnlb915b0cs2k6fc4j.apps.googleusercontent.com';
+var GOOGLE_CLIENT_ID = '';
 
 /* ================= утилиты ================= */
 function nf(n){ return Math.round(n).toLocaleString('ru-RU'); }
@@ -1120,16 +1119,16 @@ el('schedDetails').addEventListener('toggle', function(){
 window.addEventListener('resize', function(){ refresh(false); });
 
 /* ================= Google Drive ================= */
-var CID_KEY = 'credit-client-id', FILE_KEY = 'credit-file-id';
+var FILE_KEY = 'credit-file-id', PROF_KEY = 'credit-profile';
 var FILE_NAME = 'kredit-dannye.json';
 var tokenClient = null, accessToken = null, tokenExp = 0;
-var fileId = null, pushTimer = null, lastSync = null;
+var fileId = null, pushTimer = null, lastSync = null, profile = null;
 
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
 
-function clientId(){ return (GOOGLE_CLIENT_ID || lsGet(CID_KEY) || '').trim(); }
+function clientId(){ return GOOGLE_CLIENT_ID.trim(); }
 function connected(){ return !!accessToken && Date.now() < tokenExp; }
 function nowTime(){ return new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); }
 
@@ -1142,18 +1141,37 @@ function syncErr(msg){ el('syncErr').textContent = msg || ''; }
 function paintSync(){
   var live = !!fileId && connected();
   el('signInBtn').hidden = live;
-  el('pullBtn').hidden = !live;
-  el('signOutBtn').hidden = !live;
+  el('whoBox').hidden = !live;
   var link = el('openSheet');
-  link.hidden = !fileId;
+  link.hidden = !live;
   if(fileId) link.href = 'https://drive.google.com/file/d/' + fileId + '/view';
-  if(live){
-    setSync('live', 'Файл на вашем Google Диске' + (lastSync ? ' · сохранено в ' + lastSync : ''));
-  } else if(!clientId()){
-    setSync('', 'Данные хранятся только в этом браузере. Для синхронизации нужен Client ID — см. настройку ниже');
-  } else {
-    setSync('', 'Данные хранятся только в этом браузере');
+
+  if(live && profile){
+    el('userName').textContent = profile.name || 'Аккаунт Google';
+    var pic = el('userPic');
+    if(profile.picture){ pic.src = profile.picture; pic.hidden = false; }
+    else pic.hidden = true;
   }
+  if(!live) closeMenu();
+
+  setSync(live ? 'live' : '', live
+    ? (lastSync ? 'Сохранено на Диск в ' + lastSync : 'Синхронизация включена')
+    : '');
+}
+
+function closeMenu(){
+  el('userMenu').hidden = true;
+  el('userBtn').setAttribute('aria-expanded','false');
+}
+
+function loadProfile(){
+  return api('https://www.googleapis.com/oauth2/v3/userinfo')
+    .then(function(r){ return r.json(); })
+    .then(function(u){
+      profile = { name: u.name || u.email || '', picture: u.picture || '' };
+      lsSet(PROF_KEY, JSON.stringify(profile));
+    })
+    .catch(function(){ if(!profile) profile = { name:'Аккаунт Google', picture:'' }; });
 }
 
 /* --- авторизация --- */
@@ -1161,7 +1179,7 @@ function makeTokenClient(){
   if(tokenClient || !window.google || !google.accounts || !clientId()) return tokenClient;
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId(),
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    scope: 'https://www.googleapis.com/auth/drive.file openid profile email',
     callback: function(){}
   });
   return tokenClient;
@@ -1276,12 +1294,12 @@ function schedulePush(){
 el('signInBtn').addEventListener('click', function(){
   syncErr('');
   if(!clientId()){
-    syncErr('Сначала укажите OAuth Client ID в блоке настройки ниже.');
-    el('setupBox').open = true;
+    syncErr('В этой копии сайта не задан OAuth Client ID.');
     return;
   }
   setSync('busy','Подключаюсь к Google…');
   getToken(true)
+    .then(loadProfile)
     .then(ensureFile)
     .then(pullFromDrive)
     .then(function(loaded){
@@ -1296,6 +1314,7 @@ el('signInBtn').addEventListener('click', function(){
     });
 });
 el('pullBtn').addEventListener('click', function(){
+  closeMenu();
   setSync('busy','Читаю файл с Диска…');
   pullFromDrive().then(function(ok){
     refresh(false);
@@ -1305,18 +1324,22 @@ el('pullBtn').addEventListener('click', function(){
   }).catch(function(e){ setSync('bad','Не удалось прочитать файл'); syncErr(e.message); });
 });
 el('signOutBtn').addEventListener('click', function(){
+  closeMenu();
   if(accessToken && window.google && google.accounts) google.accounts.oauth2.revoke(accessToken, function(){});
-  accessToken = null; tokenExp = 0; fileId = null; lastSync = null;
-  lsDel(FILE_KEY);
+  accessToken = null; tokenExp = 0; fileId = null; lastSync = null; profile = null;
+  lsDel(FILE_KEY); lsDel(PROF_KEY);
   syncErr('');
   paintSync();
 });
-el('clientId').addEventListener('change', function(){
-  var v = this.value.trim();
-  if(v) lsSet(CID_KEY, v); else lsDel(CID_KEY);
-  tokenClient = null;
-  paintSync();
+el('userBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  var m = el('userMenu'), willOpen = m.hidden;
+  m.hidden = !willOpen;
+  this.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
 });
+el('userMenu').addEventListener('click', function(e){ e.stopPropagation(); });
+document.addEventListener('click', closeMenu);
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeMenu(); });
 
 /* ================= старт ================= */
 (function init(){
@@ -1330,13 +1353,8 @@ el('clientId').addEventListener('change', function(){
   el('nDate').value = el('nDate').value || isoDate(today);
   refresh(false);
 
-  if(!GOOGLE_CLIENT_ID){
-    var saved = lsGet(CID_KEY);
-    if(saved) el('clientId').value = saved;
-  } else {
-    el('clientId').value = GOOGLE_CLIENT_ID;
-    el('clientId').disabled = true;
-  }
+  var cachedProf = lsGet(PROF_KEY);
+  if(cachedProf){ try{ profile = JSON.parse(cachedProf); }catch(e){} }
   fileId = lsGet(FILE_KEY);
   paintSync();
 
@@ -1348,6 +1366,7 @@ el('clientId').addEventListener('change', function(){
       if(!(window.google && google.accounts)) return;
       clearInterval(wait);
       getToken(false)
+        .then(loadProfile)
         .then(pullFromDrive)
         .then(function(){ refresh(false); lastSync = nowTime(); paintSync(); })
         .catch(function(){ paintSync(); });
