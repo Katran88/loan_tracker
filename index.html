@@ -21,7 +21,9 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
-html,body{margin:0;padding:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html,body{margin:0;padding:0;overflow-x:hidden}
+html{-webkit-text-size-adjust:100%}
 body{
   background:var(--ink);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -138,7 +140,6 @@ td input[type=date]{min-height:0;text-align:left}
 }
 .del:hover{color:var(--clay);background:rgba(224,118,92,.12)}
 .addrow{display:grid;gap:8px;grid-template-columns:1.2fr 1fr 1fr auto;align-items:end;margin-bottom:14px}
-@media (max-width:640px){.addrow{grid-template-columns:1fr 1fr}}
 
 /* сводка */
 .summary{display:flex;flex-direction:column;gap:2px}
@@ -149,17 +150,43 @@ td input[type=date]{min-height:0;text-align:left}
 .v.gold{color:var(--gold)}.v.clay{color:var(--clay)}.v.ok{color:var(--ok)}.v.teal{color:var(--teal)}
 
 /* ползунки */
-.slider-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
-.slider-row .name{font-size:14px;color:var(--muted);flex:0 0 auto}
-.slider-row input[type=range]{flex:1 1 180px;min-width:140px}
-.slider-row .val{font-variant-numeric:tabular-nums;font-weight:600;min-width:104px;text-align:right}
-input[type=range]{-webkit-appearance:none;appearance:none;height:22px;background:transparent;cursor:pointer}
-input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--rule);border-radius:2px}
-input[type=range]::-moz-range-track{height:3px;background:var(--rule);border-radius:2px}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:19px;height:19px;border-radius:50%;background:var(--gold);border:none;margin-top:-8px}
-input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;background:var(--gold);border:none}
-input.thumb-clay::-webkit-slider-thumb{background:var(--clay)}
-input.thumb-clay::-moz-range-thumb{background:var(--clay)}
+.slider-row{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  gap:6px 14px;margin-bottom:16px;
+}
+.slider-row .name{font-size:14px;color:var(--muted)}
+.slider-row input[type=range]{width:100%;min-width:0}
+.slider-row .val{
+  font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;
+  background:var(--ink);border:1px solid var(--rule);border-radius:999px;
+  padding:4px 12px;white-space:nowrap;justify-self:end;
+}
+input[type=range]{
+  --pct:0%; --fill:var(--gold);
+  -webkit-appearance:none;appearance:none;
+  height:30px;background:transparent;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:pan-y;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:7px;border-radius:999px;
+  background:linear-gradient(90deg, var(--fill) 0 var(--pct), var(--rule) var(--pct) 100%);
+}
+input[type=range]::-moz-range-track{height:7px;border-radius:999px;background:var(--rule)}
+input[type=range]::-moz-range-progress{height:7px;border-radius:999px;background:var(--fill)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:24px;height:24px;border-radius:50%;
+  background:var(--fill);border:4px solid var(--panel);
+  box-shadow:0 2px 8px rgba(0,0,0,.45);
+  margin-top:-8.5px;
+}
+input[type=range]::-moz-range-thumb{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--fill);border:4px solid var(--panel);
+  box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
+input.thumb-clay{--fill:var(--clay)}
 
 .metric{border-top:1px solid var(--rule);padding-top:11px}
 .metric .k{font-size:13px;color:var(--muted);margin-bottom:3px}
@@ -210,12 +237,84 @@ details[open] summary::before{transform:rotate(45deg)}
 
 footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);padding-top:18px;max-width:66ch;margin-top:8px}
 
-@media (max-width:560px){
-  .wrap{padding:24px 14px 56px}
+@media (max-width:760px){
+  .wrap{padding:22px 14px 56px}
   section{padding:18px 15px}
+  h1{font-size:26px}
+  .lede{margin-bottom:20px}
   .metric .v{font-size:21px}
-  .chart-box{height:225px}
-  .tabs button{padding:10px 13px;font-size:14px}
+  .chart-box{height:230px}
+  .chart-box.pie{height:210px}
+  .tabs button{padding:11px 14px;font-size:14px}
+  .syncbar{padding:10px 12px}
+  .syncbar .status{flex:1 1 100%;order:2}
+  .syncbar .acts{order:1;width:100%}
+  .syncbar .acts > *{flex:1 1 auto}
+  .userbtn{width:100%;justify-content:flex-start}
+  .btn.small{text-align:center}
+  .grid.inputs{grid-template-columns:1fr 1fr}
+  .grid.inputs > div:nth-child(4){grid-column:1/-1}
+
+  /* ползунок: подпись сверху, значение справа, полоса во всю ширину */
+  .slider-row{grid-template-columns:1fr auto;gap:2px 10px}
+  .slider-row .name{grid-row:1;grid-column:1}
+  .slider-row .val{grid-row:1;grid-column:2}
+  .slider-row input[type=range]{grid-row:2;grid-column:1/-1}
+
+  /* форма добавления платежа */
+  .addrow{grid-template-columns:1fr 1fr;gap:10px}
+  .addrow > div:first-child{grid-column:1/-1}
+  .addrow > button{grid-column:1/-1;padding:11px}
+
+  /* таблица платежей превращается в карточки */
+  .paylist{max-height:none;border:none;overflow:visible}
+  .pay-table,.pay-table tbody,.pay-table tfoot,.pay-table tr,.pay-table td{display:block;width:100%}
+  .pay-table thead{display:none}
+  .pay-table tbody tr{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    background:var(--panel-2);border:1px solid var(--rule);border-radius:10px;
+    padding:12px 44px 12px 12px;margin-bottom:10px;position:relative;
+  }
+  .pay-table tbody tr:nth-child(even){background:var(--panel-2)}
+  .pay-table td{padding:0;border:none;text-align:left;white-space:normal}
+  .pay-table td[data-label]::before{
+    content:attr(data-label);display:block;
+    font-size:11px;color:var(--muted);margin-bottom:3px;line-height:1.3;
+  }
+  .pay-table td.c-date{grid-column:1/-1}
+  .pay-table td.c-total{grid-column:1/-1;font-size:15px;padding-top:8px;border-top:1px solid var(--rule-soft)}
+  .pay-table td.c-del{position:absolute;top:8px;right:8px;width:auto}
+  .pay-table td input{
+    width:100%;border:1px solid var(--rule);background:var(--ink);
+    padding:9px 10px;font-size:15px;text-align:left;border-radius:7px;
+  }
+  .pay-table td input[type=date]{min-height:42px}
+  .pay-table .del{font-size:22px;padding:6px 9px}
+  .pay-table tfoot tr{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    border-top:1px solid var(--rule);padding:12px 12px 4px;background:transparent;
+  }
+  .pay-table tfoot td{position:static;font-weight:600}
+  .pay-table tfoot td.c-date{grid-column:1/-1;font-weight:400;color:var(--muted)}
+  .pay-table tfoot td.c-total{grid-column:1/-1;border-top:1px solid var(--rule-soft);padding-top:8px}
+  .pay-table tfoot td.c-del{display:none}
+  .pay-table .empty{display:block;padding:22px 10px}
+
+  /* график будущих платежей остаётся таблицей, но компактнее */
+  .sched-table{font-size:12.5px}
+  .sched-table thead th,.sched-table tbody td,.sched-table tfoot td{padding:7px 8px}
+}
+
+@media (max-width:380px){
+  .grid.inputs{grid-template-columns:1fr}
+  .pay-table tbody tr{grid-template-columns:1fr}
+}
+
+/* на сенсорных экранах ползунок крупнее */
+@media (pointer:coarse){
+  input[type=range]{height:38px}
+  input[type=range]::-webkit-slider-thumb{width:28px;height:28px;margin-top:-10.5px}
+  input[type=range]::-moz-range-thumb{width:28px;height:28px}
 }
 </style>
 </head>
@@ -298,15 +397,15 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
         <button type="button" class="btn solid" id="addBtn">Добавить</button>
       </div>
       <div class="err" id="addErr"></div>
-      <div class="tbl-scroll">
-        <table>
+      <div class="tbl-scroll paylist">
+        <table class="pay-table">
           <thead>
             <tr>
               <th scope="col">Дата</th>
               <th scope="col">В основной долг</th>
               <th scope="col">В проценты</th>
               <th scope="col">Всего</th>
-              <th scope="col"></th>
+              <th scope="col"><span class="sr">Удалить</span></th>
             </tr>
           </thead>
           <tbody id="payBody"></tbody>
@@ -457,7 +556,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
   <details id="schedDetails">
     <summary id="schedSummary">Показать график</summary>
     <div class="tbl-scroll">
-      <table>
+      <table class="sched-table">
         <thead>
           <tr>
             <th scope="col">Месяц</th>
@@ -725,6 +824,15 @@ function drawDonut(canvas, done, total){
 }
 
 /* ================= вкладка 1 ================= */
+function footRow(p){
+  return '<tr>' +
+    '<td class="c-date">Итого ' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') + '</td>' +
+    '<td class="c-num" data-label="В основной долг">' + nf(p.paidPrin) + '</td>' +
+    '<td class="c-num int" data-label="В проценты">' + nf(p.paidInt) + '</td>' +
+    '<td class="c-total" data-label="Всего">' + nf(p.paidPrin + p.paidInt) + '</td>' +
+    '<td class="c-del"></td></tr>';
+}
+
 function renderPayments(p){
   var body = el('payBody'), foot = el('payFoot');
   if(!p.list.length){
@@ -735,16 +843,14 @@ function renderPayments(p){
   body.innerHTML = p.list.map(function(row){
     var idx = payments.indexOf(row);
     return '<tr>' +
-      '<td><input type="date" data-i="' + idx + '" data-f="date" value="' + row.date + '"></td>' +
-      '<td><input type="number" data-i="' + idx + '" data-f="principal" min="0" step="1" value="' + row.principal + '"></td>' +
-      '<td><input type="number" data-i="' + idx + '" data-f="interest" min="0" step="1" value="' + row.interest + '"></td>' +
-      '<td class="pay">' + nf(row.principal + row.interest) + '</td>' +
-      '<td><button type="button" class="del" data-del="' + idx + '" aria-label="Удалить платёж">&times;</button></td>' +
+      '<td class="c-date"><input type="date" data-i="' + idx + '" data-f="date" value="' + row.date + '" aria-label="Дата платежа"></td>' +
+      '<td class="c-num" data-label="В основной долг"><input type="number" inputmode="decimal" data-i="' + idx + '" data-f="principal" min="0" step="1" value="' + row.principal + '" aria-label="В основной долг"></td>' +
+      '<td class="c-num" data-label="В проценты"><input type="number" inputmode="decimal" data-i="' + idx + '" data-f="interest" min="0" step="1" value="' + row.interest + '" aria-label="В проценты"></td>' +
+      '<td class="pay c-total" data-label="Всего">' + nf(row.principal + row.interest) + '</td>' +
+      '<td class="c-del"><button type="button" class="del" data-del="' + idx + '" aria-label="Удалить платёж">&times;</button></td>' +
     '</tr>';
   }).join('');
-  foot.innerHTML = '<tr><td>Итого ' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') + '</td>' +
-    '<td>' + nf(p.paidPrin) + '</td><td class="int">' + nf(p.paidInt) + '</td>' +
-    '<td>' + nf(p.paidPrin + p.paidInt) + '</td><td></td></tr>';
+  foot.innerHTML = footRow(p);
 }
 
 function renderSummary(p){
@@ -816,6 +922,12 @@ function renderBalanceChart(p){
 }
 
 /* ================= вкладка 2 ================= */
+function paintRange(input){
+  var min = +input.min, max = +input.max, v = +input.value;
+  var pct = max > min ? ((v - min)/(max - min))*100 : 0;
+  input.style.setProperty('--pct', Math.max(0, Math.min(100, pct)).toFixed(2) + '%');
+}
+
 function setRange(input, lo, hi, step, init){
   lo = Math.floor(lo/step)*step; hi = Math.ceil(hi/step)*step;
   if(hi <= lo) hi = lo + step*20;
@@ -827,6 +939,7 @@ function setRange(input, lo, hi, step, init){
   } else if(was < lo || was > hi){
     input.value = Math.min(hi, Math.max(lo, was));
   }
+  paintRange(input);
 }
 function findKnee(pts){
   if(pts.length < 3) return null;
@@ -1022,7 +1135,8 @@ function refresh(save){
   el(id).addEventListener('change', function(){ refresh(); });
 });
 ['payA','payC','extra'].forEach(function(id){
-  el(id).addEventListener('input', function(){ renderCalc(readParams()); });
+  el(id).addEventListener('input', function(){ paintRange(this); renderCalc(readParams()); });
+  paintRange(el(id));
 });
 
 el('addBtn').addEventListener('click', function(){
@@ -1048,8 +1162,7 @@ el('payBody').addEventListener('input', function(e){
   var p = readParams();
   renderSummary(p); drawDonut(el('chartPie'), p.paidPrin, p.orig);
   renderBalanceChart(p); renderCalc(p);
-  el('payFoot').innerHTML = '<tr><td>Итого ' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') +
-    '</td><td>' + nf(p.paidPrin) + '</td><td class="int">' + nf(p.paidInt) + '</td><td>' + nf(p.paidPrin + p.paidInt) + '</td><td></td></tr>';
+  el('payFoot').innerHTML = footRow(p);
   saveState();
 });
 el('payBody').addEventListener('click', function(e){
