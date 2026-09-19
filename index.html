@@ -74,6 +74,13 @@ h3{font-size:15px;font-weight:600;margin:0 0 12px;color:var(--text)}
 .menu button:hover{background:var(--rule)}
 .menu button:last-child{color:var(--clay)}
 
+#payDetails{margin-top:0}
+#paySummary{
+  font-size:14px;color:var(--text);padding:9px 0;
+  border-bottom:1px solid var(--rule);margin-bottom:10px;
+}
+#paySummary::before{border-color:var(--gold)}
+
 /* вкладки */
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:26px}
 .tabs button{
@@ -90,6 +97,7 @@ section{background:var(--panel);border:1px solid var(--rule);border-radius:10px;
 section.params{background:var(--panel-2)}
 
 .grid{display:grid;gap:14px}
+.grid > *{min-width:0}
 .grid.inputs{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .split{display:grid;gap:20px;grid-template-columns:minmax(0,1.55fr) minmax(250px,1fr)}
 .charts{display:grid;gap:20px;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)}
@@ -100,7 +108,7 @@ input[type=number],input[type=date]{
   width:100%;background:var(--ink);border:1px solid var(--rule);border-radius:6px;
   color:var(--text);font:inherit;font-variant-numeric:tabular-nums;padding:9px 11px;
 }
-input[type=date]{color-scheme:dark;min-height:41px}
+input[type=date]{color-scheme:dark;min-height:41px;-webkit-appearance:none;appearance:none;min-width:0}
 input:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .hint{font-size:12px;color:var(--muted);margin-top:5px;min-height:15px}
 
@@ -140,6 +148,8 @@ td input[type=date]{min-height:0;text-align:left}
 }
 .del:hover{color:var(--clay);background:rgba(224,118,92,.12)}
 .addrow{display:grid;gap:8px;grid-template-columns:1.2fr 1fr 1fr auto;align-items:end;margin-bottom:14px}
+.addrow > *{min-width:0}
+.narrow{display:none}
 
 /* сводка */
 .summary{display:flex;flex-direction:column;gap:2px}
@@ -264,41 +274,29 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
   /* форма добавления платежа */
   .addrow{grid-template-columns:1fr 1fr;gap:10px}
   .addrow > div:first-child{grid-column:1/-1}
-  .addrow > button{grid-column:1/-1;padding:11px}
+  .addrow > button{grid-column:1/-1;padding:12px;font-size:15px}
+  .addrow input{font-size:16px}
 
-  /* таблица платежей превращается в карточки */
-  .paylist{max-height:none;border:none;overflow:visible}
-  .pay-table,.pay-table tbody,.pay-table tfoot,.pay-table tr,.pay-table td{display:block;width:100%}
-  .pay-table thead{display:none}
-  .pay-table tbody tr{
-    display:grid;grid-template-columns:1fr 1fr;gap:10px;
-    background:var(--panel-2);border:1px solid var(--rule);border-radius:10px;
-    padding:12px 44px 12px 12px;margin-bottom:10px;position:relative;
-  }
-  .pay-table tbody tr:nth-child(even){background:var(--panel-2)}
-  .pay-table td{padding:0;border:none;text-align:left;white-space:normal}
-  .pay-table td[data-label]::before{
-    content:attr(data-label);display:block;
-    font-size:11px;color:var(--muted);margin-bottom:3px;line-height:1.3;
-  }
-  .pay-table td.c-date{grid-column:1/-1}
-  .pay-table td.c-total{grid-column:1/-1;font-size:15px;padding-top:8px;border-top:1px solid var(--rule-soft)}
-  .pay-table td.c-del{position:absolute;top:8px;right:8px;width:auto}
+  /* таблица платежей: все пять колонок остаются на экране */
+  .wide{display:none}
+  .narrow{display:inline}
+  .pay-table{min-width:330px;width:100%;table-layout:fixed;font-size:13px}
+  .pay-table thead th{padding:8px 4px;font-size:11.5px}
+  .pay-table tbody td{padding:4px 4px}
+  .pay-table tfoot td{padding:8px 4px}
+  .pay-table th:nth-child(1),.pay-table td:nth-child(1){width:16%}
+  .pay-table th:nth-child(2),.pay-table td:nth-child(2){width:31%}
+  .pay-table th:nth-child(3),.pay-table td:nth-child(3),
+  .pay-table th:nth-child(4),.pay-table td:nth-child(4){width:22%}
+  .pay-table th:nth-child(5),.pay-table td:nth-child(5){width:9%;padding-left:0;padding-right:2px}
   .pay-table td input{
-    width:100%;border:1px solid var(--rule);background:var(--ink);
-    padding:9px 10px;font-size:15px;text-align:left;border-radius:7px;
+    width:100%;font-size:16px;padding:7px 4px;
+    border-color:var(--rule);text-align:right;
   }
-  .pay-table td input[type=date]{min-height:42px}
-  .pay-table .del{font-size:22px;padding:6px 9px}
-  .pay-table tfoot tr{
-    display:grid;grid-template-columns:1fr 1fr;gap:8px;
-    border-top:1px solid var(--rule);padding:12px 12px 4px;background:transparent;
-  }
-  .pay-table tfoot td{position:static;font-weight:600}
-  .pay-table tfoot td.c-date{grid-column:1/-1;font-weight:400;color:var(--muted)}
-  .pay-table tfoot td.c-total{grid-column:1/-1;border-top:1px solid var(--rule-soft);padding-top:8px}
-  .pay-table tfoot td.c-del{display:none}
-  .pay-table .empty{display:block;padding:22px 10px}
+  .pay-table td input[type=date]{min-height:38px;text-align:left;padding:7px 2px}
+  .pay-table .c-total{font-size:13px;font-weight:600}
+  .pay-table .del{font-size:19px;padding:4px 2px}
+  .paylist{max-height:340px}
 
   /* график будущих платежей остаётся таблицей, но компактнее */
   .sched-table{font-size:12.5px}
@@ -307,7 +305,6 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
 
 @media (max-width:380px){
   .grid.inputs{grid-template-columns:1fr}
-  .pay-table tbody tr{grid-template-columns:1fr}
 }
 
 /* на сенсорных экранах ползунок крупнее */
@@ -397,14 +394,16 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
         <button type="button" class="btn solid" id="addBtn">Добавить</button>
       </div>
       <div class="err" id="addErr"></div>
+      <details id="payDetails" open>
+        <summary id="paySummary">Список платежей</summary>
       <div class="tbl-scroll paylist">
         <table class="pay-table">
           <thead>
             <tr>
+              <th scope="col" class="c-total">Всего</th>
               <th scope="col">Дата</th>
-              <th scope="col">В основной долг</th>
-              <th scope="col">В проценты</th>
-              <th scope="col">Всего</th>
+              <th scope="col"><span class="wide">В основной долг</span><span class="narrow">Долг</span></th>
+              <th scope="col"><span class="wide">В проценты</span><span class="narrow">%</span></th>
               <th scope="col"><span class="sr">Удалить</span></th>
             </tr>
           </thead>
@@ -412,6 +411,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--rule);paddin
           <tfoot id="payFoot"></tfoot>
         </table>
       </div>
+      </details>
       <div class="btnrow">
         <button type="button" class="btn" id="exportBtn">Скачать копию</button>
         <button type="button" class="btn" id="importBtn">Загрузить из файла</button>
@@ -826,15 +826,22 @@ function drawDonut(canvas, done, total){
 /* ================= вкладка 1 ================= */
 function footRow(p){
   return '<tr>' +
-    '<td class="c-date">Итого ' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') + '</td>' +
-    '<td class="c-num" data-label="В основной долг">' + nf(p.paidPrin) + '</td>' +
-    '<td class="c-num int" data-label="В проценты">' + nf(p.paidInt) + '</td>' +
-    '<td class="c-total" data-label="Всего">' + nf(p.paidPrin + p.paidInt) + '</td>' +
+    '<td class="c-total">' + nf(p.paidPrin + p.paidInt) + '</td>' +
+    '<td class="c-date">' + p.list.length + ' ' + plural(p.list.length,'платёж','платежа','платежей') + '</td>' +
+    '<td class="c-num">' + nf(p.paidPrin) + '</td>' +
+    '<td class="c-num int">' + nf(p.paidInt) + '</td>' +
     '<td class="c-del"></td></tr>';
+}
+
+function paySummaryText(p){
+  if(!p.list.length) return 'Список платежей';
+  return 'Список платежей · ' + p.list.length + ' ' +
+    plural(p.list.length,'запись','записи','записей') + ' · ' + money(p.paidPrin + p.paidInt);
 }
 
 function renderPayments(p){
   var body = el('payBody'), foot = el('payFoot');
+  el('paySummary').textContent = paySummaryText(p);
   if(!p.list.length){
     body.innerHTML = '<tr><td colspan="5" class="empty">Платежей пока нет. Добавьте первый через форму выше.</td></tr>';
     foot.innerHTML = '';
@@ -843,10 +850,10 @@ function renderPayments(p){
   body.innerHTML = p.list.map(function(row){
     var idx = payments.indexOf(row);
     return '<tr>' +
+      '<td class="pay c-total">' + nf(row.principal + row.interest) + '</td>' +
       '<td class="c-date"><input type="date" data-i="' + idx + '" data-f="date" value="' + row.date + '" aria-label="Дата платежа"></td>' +
-      '<td class="c-num" data-label="В основной долг"><input type="number" inputmode="decimal" data-i="' + idx + '" data-f="principal" min="0" step="1" value="' + row.principal + '" aria-label="В основной долг"></td>' +
-      '<td class="c-num" data-label="В проценты"><input type="number" inputmode="decimal" data-i="' + idx + '" data-f="interest" min="0" step="1" value="' + row.interest + '" aria-label="В проценты"></td>' +
-      '<td class="pay c-total" data-label="Всего">' + nf(row.principal + row.interest) + '</td>' +
+      '<td class="c-num"><input type="number" inputmode="decimal" data-i="' + idx + '" data-f="principal" min="0" step="1" value="' + row.principal + '" aria-label="В основной долг"></td>' +
+      '<td class="c-num"><input type="number" inputmode="decimal" data-i="' + idx + '" data-f="interest" min="0" step="1" value="' + row.interest + '" aria-label="В проценты"></td>' +
       '<td class="c-del"><button type="button" class="del" data-del="' + idx + '" aria-label="Удалить платёж">&times;</button></td>' +
     '</tr>';
   }).join('');
@@ -1163,6 +1170,7 @@ el('payBody').addEventListener('input', function(e){
   renderSummary(p); drawDonut(el('chartPie'), p.paidPrin, p.orig);
   renderBalanceChart(p); renderCalc(p);
   el('payFoot').innerHTML = footRow(p);
+  el('paySummary').textContent = paySummaryText(p);
   saveState();
 });
 el('payBody').addEventListener('click', function(e){
